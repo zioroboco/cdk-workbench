@@ -11,9 +11,15 @@ export class Stack extends cdk.Stack {
       bucketName: `${name}-website`,
       websiteIndexDocument: "index.html",
       websiteErrorDocument: "404.html",
+      publicReadAccess: true,
     })
 
     new CloudFrontWebDistribution(this, "Distribution", {
+      aliasConfiguration: {
+        names: ["cdk-workbench.ziorobo.co"],
+        acmCertRef:
+          "arn:aws:acm:us-east-1:203242799745:certificate/97978590-a0d3-4584-aa59-daed83e6e520",
+      },
       originConfigs: [
         {
           behaviors: [{ isDefaultBehavior: true }],
