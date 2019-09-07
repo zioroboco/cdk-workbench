@@ -4,37 +4,67 @@ import {
 } from "@aws-cdk/aws-cloudfront"
 import { Bucket } from "@aws-cdk/aws-s3"
 import * as cdk from "@aws-cdk/core"
-import { name } from "../package.json"
+import { Aws } from "@aws-cdk/core"
 
-const bucketName = `${name}-website`
+export type StackProps = cdk.StackProps & {
+  /**
+   * Physical name of the bucket.
+   *
+   * @example
+   * "cool-website-bucket"
+   */
+  bucketName: string
+
+  /**
+   * Path to the bucket's default documents (i.e. `index.html`/`404.html`).
+   *
+   * @example
+   * undefined ( -> "/index.html" )
+   * "master"  ( -> "/master/index.html" )
+   */
+  defaultRoot?: string
+
+  /**
+   * The domain name with an alias record for this cloudfront distribution.
+   *
+   * @example
+   * "website.cool"
+   */
+  domainName: string
+
+  /**
+   * ARN of an AWS Certificate Manager certificate for `domainName`.
+   *
+   * @example
+   * "arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>"
+   */
+  acmCertRef: string
+}
 
 export class Stack extends cdk.Stack {
-  constructor(app: cdk.App, id: string, { env, ...props }: cdk.StackProps) {
+  constructor(app: cdk.App, id: string, props: StackProps) {
     super(app, id, props)
 
-    if (!env || !env.region) {
-      throw new Error("env.region was undefined")
-    }
+    const { bucketName, defaultRoot, domainName, acmCertRef } = props
+
+    const defaultDocument = (document: string) =>
+      defaultRoot ? [defaultRoot, document].join("/") : document
 
     new Bucket(this, "Bucket", {
       bucketName,
-      websiteIndexDocument: "index.html",
-      websiteErrorDocument: "404.html",
+      websiteIndexDocument: defaultDocument("index.html"),
+      websiteErrorDocument: defaultDocument("404.html"),
       publicReadAccess: true,
     })
 
     new CloudFrontWebDistribution(this, "Distribution", {
-      aliasConfiguration: {
-        names: ["cdk-workbench.ziorobo.co"],
-        acmCertRef:
-          "arn:aws:acm:us-east-1:203242799745:certificate/97978590-a0d3-4584-aa59-daed83e6e520",
-      },
+      aliasConfiguration: { names: [domainName], acmCertRef },
       defaultRootObject: "", // CDK defaults to `index.html`, overriding S3
       originConfigs: [
         {
           behaviors: [{ isDefaultBehavior: true }],
           customOriginSource: {
-            domainName: `${bucketName}.s3-website.${env.region}.amazonaws.com`,
+            domainName: `${bucketName}.s3-website.${Aws.REGION}.amazonaws.com`,
             originProtocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
           },
         },
