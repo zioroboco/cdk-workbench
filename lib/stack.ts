@@ -4,7 +4,13 @@ import {
 } from "@aws-cdk/aws-cloudfront"
 import { Bucket } from "@aws-cdk/aws-s3"
 import * as cdk from "@aws-cdk/core"
-import { Aws } from "@aws-cdk/core"
+import { Aws, CfnOutput } from "@aws-cdk/core"
+
+export enum Output {
+  BucketName = "BucketName",
+  DistributionId = "DistributionId",
+  DistributionDomainName = "DistributionDomainName",
+}
 
 export type StackProps = cdk.StackProps & {
   /**
@@ -50,14 +56,14 @@ export class Stack extends cdk.Stack {
     const defaultDocument = (document: string) =>
       defaultRoot ? [defaultRoot, document].join("/") : document
 
-    new Bucket(this, "Bucket", {
+    const bucket = new Bucket(this, "Bucket", {
       bucketName,
       websiteIndexDocument: defaultDocument("index.html"),
       websiteErrorDocument: defaultDocument("404.html"),
       publicReadAccess: true,
     })
 
-    new CloudFrontWebDistribution(this, "Distribution", {
+    const distribution = new CloudFrontWebDistribution(this, "Distribution", {
       aliasConfiguration: { names: [domainName], acmCertRef },
       defaultRootObject: "", // CDK defaults to `index.html`, overriding S3
       originConfigs: [
@@ -69,6 +75,21 @@ export class Stack extends cdk.Stack {
           },
         },
       ],
+    })
+
+    new CfnOutput(this, Output.BucketName, {
+      exportName: Output.BucketName,
+      value: bucket.bucketName,
+    })
+
+    new CfnOutput(this, Output.DistributionId, {
+      exportName: Output.DistributionId,
+      value: distribution.distributionId,
+    })
+
+    new CfnOutput(this, Output.DistributionDomainName, {
+      exportName: Output.DistributionDomainName,
+      value: distribution.domainName,
     })
   }
 }
